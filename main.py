@@ -7,22 +7,22 @@ import numpy as np
 
 from modeles import *
 
-croissance = 0.001
+croissance = 0.1
 
-POPULATION_INIT = 1
+POPULATION_INIT = 1000
 
 def data_gen():
     for cnt in itertools.count():
         t = cnt / 10
-        yield t, malthus(xdata[-1], croissance)
+        yield t, malthus(ydata[-1], croissance)  # last population, from ydata
 
 def init():
-    ax.set_ylim(-1.1, 1.1)
+    ax.set_ylim(POPULATION_INIT, POPULATION_INIT * 2)
     ax.set_xlim(0, 1)
     del xdata[:]
-    xdata.append(POPULATION_INIT)
+    xdata.append(0)              # x = time, starts at 0
     del ydata[:]
-    ydata.append(0)
+    ydata.append(POPULATION_INIT)  # y = population, starts at POPULATION_INIT
     line.set_data(xdata, ydata)
     return line,
 
@@ -31,17 +31,21 @@ line, = ax.plot([], [], lw=2)
 ax.grid()
 xdata, ydata = [], []
 
-
 def run(data):
     # update the data
     t, y = data
     xdata.append(t)
     ydata.append(y)
     xmin, xmax = ax.get_xlim()
+    ymin, ymax = ax.get_ylim()
 
     if t >= xmax:
-        ax.set_xlim(xmin, 2*xmax)
+        ax.set_xlim(xmin, xdata[-1])
         ax.figure.canvas.draw()
+    if ydata[-1] >= ymax:
+        ax.set_ylim(POPULATION_INIT, ydata[-1])
+        ax.figure.canvas.draw()
+
     line.set_data(xdata, ydata)
 
     return line,
