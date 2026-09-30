@@ -3,7 +3,7 @@ import matplotlib.animation as animation
 
 from modeles import *
 
-# modele = Malthus(1.2)
+# modele = Malthus(1.01)
 
 modele = Verhulst(1.2, 1000)
 
@@ -18,7 +18,7 @@ ani = animation.FuncAnimation(
     modele.fig,
     modele.run,
     modele.data_gen,
-    interval=1,
+    interval=10,
     init_func=modele.init,
     save_count=100,
 )

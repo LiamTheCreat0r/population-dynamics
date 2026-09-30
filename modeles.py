@@ -1,5 +1,6 @@
 import itertools
 from abc import ABC, abstractmethod
+from solveurs import *
 
 import matplotlib.pyplot as plt
 
@@ -25,12 +26,23 @@ class Modele(ABC):
 
     POPULATION_INIT = 10
 
-    def __init__(self):
+    def __init__(self, solveur=rungeKutta, dt=0.1):
+        self.solveur = solveur
+        self.dt = dt
         self.fig, self.ax = plt.subplots(figsize=(8, 5))
         (self.line,) = self.ax.plot([], [], lw=2, color=COULEUR_PROIES)
         self._style_axes()
         self.xdata = []
         self.ydata = []
+
+    @abstractmethod
+    def derivee(self, t, y):
+        """Second membre de l'équation différentielle y' = f(t, y)."""
+
+    def generation(self, etat):
+        """Un pas du solveur : renvoie l'état à t + dt."""
+        _, y = self.solveur(self.derivee, etat, self.dt, self.dt)
+        return y[-1]
 
     def _style_axes(self):
         """Épure le graphique : pas de cadre, grille discrète, axes nommés."""
@@ -52,10 +64,6 @@ class Modele(ABC):
     def sauvegarder(self, nom_fichier="graphique.png"):
         """Enregistre le graphique en haute résolution (300 DPI)."""
         self.fig.savefig(nom_fichier, dpi=300, bbox_inches="tight")
-
-    @abstractmethod
-    def generation(self, *args):
-        """Calcule l'etat suivant a partir de l'etat courant."""
 
     def init(self):
         self.ax.set_ylim(self.POPULATION_INIT, self.POPULATION_INIT * 2)
@@ -86,21 +94,20 @@ class Modele(ABC):
         return self.line
 
     def data_gen(self):
-        for cnt in itertools.count():
-            t = cnt / 10
-            yield t, self.generation(self.ydata[-1])
+        for cnt in itertools.count(1):
+            yield cnt * self.dt, self.generation(self.ydata[-1])
 
 
 class Malthus(Modele):
 
     growth: float
 
-    def __init__(self, growth):
-        super().__init__()
+    def __init__(self, growth, **kwargs):
+        super().__init__(**kwargs)
         self.growth = growth
 
-    def generation(self, population):
-        return population * self.growth
+    def derivee(self, t, y):
+        return self.growth * y
 
 
 class Verhulst(Modele):
@@ -108,15 +115,13 @@ class Verhulst(Modele):
     growth: float
     environnementCapacity: float
 
-    def __init__(self, growth, environnementCapacity):
-        super().__init__()
+    def __init__(self, growth, environnementCapacity, **kwargs):
+        super().__init__(**kwargs)
         self.growth = growth
         self.environnementCapacity = environnementCapacity
 
-    def generation(self, population):
-        return population + population * self.growth * (
-            1 - population / self.environnementCapacity
-        )
+    def derivee(self, t, y):
+        return self.growth * y * (1 - y / self.environnementCapacity)
 
 
 class Volterra(Modele):
@@ -132,9 +137,9 @@ class Volterra(Modele):
         chanceInteractionPrey,
         chanceInteractionPredator,
         dt=0.01,
+        **kwargs
     ):
-        # Modele crée déjà la figure, l'axe et la courbe (self.line) des proies
-        super().__init__()
+        super().__init__(dt=dt, **kwargs)
 
         # Paramètres du modèle
         self.growthPrey = growthPrey
@@ -155,6 +160,24 @@ class Volterra(Modele):
 
         # Historique des prédateurs (xdata et ydata sont déjà créés par Modele)
         self.ydata_pred = []
+
+    def derivee(self, t, y):
+        prey, predator = y
+        return np.array(
+            [
+                self.growthPrey * prey - self.chanceInteractionPrey * prey * predator,
+                -self.growthPredator * predator
+                + self.chanceInteractionPredator * prey * predator,
+            ]
+        )
+
+    def data_gen(self):
+        etat = np.array([self.POPULATION_INIT, self.PREDATOR_INIT], dtype=float)
+        t = 0
+        while True:
+            t += self.dt
+            etat = self.generation(etat)
+            yield t, etat[0], etat[1]
 
     def _etiquette(self, texte, couleur):
         """Crée une étiquette colorée, décalée de 8 points à droite de son point."""
