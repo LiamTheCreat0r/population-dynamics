@@ -1,23 +1,26 @@
-import itertools
-
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-from modeles import Malthus
+from modeles import *
 
-growth = 1.05
+# modele = Malthus(1.2)
 
-fig, ax = plt.subplots()
-line, = ax.plot([], [], lw=2)
-ax.grid()
+# modele = Verhulst(1.2, 1000)
 
-modele = Malthus(ax, line)
+modele = Volterra(
+    1.0,
+    1.5,
+    0.1,
+    0.075,
+)
 
-def data_gen():
-    for cnt in itertools.count():
-        t = cnt / 10
-        yield t, modele.generation(modele.ydata[-1], growth)
+ani = animation.FuncAnimation(
+    modele.fig,
+    modele.run,
+    modele.data_gen,
+    interval=1,
+    init_func=modele.init,
+    save_count=100,
+)
 
-ani = animation.FuncAnimation(fig, modele.run, data_gen, interval=100,
-                              init_func=modele.init, save_count=100)
 plt.show()
