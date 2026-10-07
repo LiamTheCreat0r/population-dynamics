@@ -32,7 +32,13 @@ class Graphique:
             if len(noms) > 1
             else []
         )
-        fig.subplots_adjust(bottom=0.22, right=0.85 if self.etiquettes else 0.95)
+        # La colonne de gauche est réservée aux contrôles
+        fig.subplots_adjust(
+            left=0.36,
+            bottom=0.12,
+            top=0.95,
+            right=0.85 if self.etiquettes else 0.95,
+        )
 
         self.xdata, self.ydata = [], [[] for _ in noms]
 

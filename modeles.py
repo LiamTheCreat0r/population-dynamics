@@ -7,9 +7,19 @@ class Modele(ABC):
 
     noms = ("Population",)  # un nom par composante de l'état
 
-    def __init__(self, solveur=rungeKutta, dt=0.1):
+    # Paramètres réglables : (clé, libellé, minimum, maximum, valeur par défaut)
+    PARAMETRES = ()
+
+    def __init__(self, solveur=rungeKutta, dt=0.1, **valeurs):
         self.solveur = solveur
         self.dt = dt
+        # Valeurs courantes, modifiables à chaud (lues à chaque pas)
+        self.params = {cle: defaut for cle, _, _, _, defaut in self.PARAMETRES}
+        self.params.update(valeurs)
+
+    def definir(self, cle, valeur):
+        """Change un paramètre ; le prochain pas de calcul l'utilise."""
+        self.params[cle] = valeur
 
     @abstractmethod
     def etat_initial(self):
@@ -36,59 +46,54 @@ class Modele(ABC):
 
 class Malthus(Modele):
 
-    def __init__(self, growth, **kwargs):
-        super().__init__(**kwargs)
-        self.growth = growth
+    PARAMETRES = (("croissance", "Croissance", 0.0, 3.0, 1.01),)
 
     def etat_initial(self):
         return np.array([10.0])
 
     def derivee(self, t, y):
-        return self.growth * y
+        return self.params["croissance"] * y
 
 
 class Verhulst(Modele):
 
-    def __init__(self, growth, capacity, **kwargs):
-        super().__init__(**kwargs)
-        self.growth = growth
-        self.capacity = capacity
+    PARAMETRES = (
+        ("croissance", "Croissance", 0.0, 3.0, 1.2),
+        ("capacite", "Capacité du milieu", 100.0, 5000.0, 1000.0),
+    )
 
     def etat_initial(self):
         return np.array([10.0])
 
     def derivee(self, t, y):
-        return self.growth * y * (1 - y / self.capacity)
+        p = self.params
+        return p["croissance"] * y * (1 - y / p["capacite"])
 
 
 class Volterra(Modele):
 
     noms = ("Proies", "Prédateurs")
 
-    def __init__(
-        self,
-        growthPrey,
-        growthPredator,
-        chanceInteractionPrey,
-        chanceInteractionPredator,
-        dt=0.01,
-        **kwargs
-    ):
+    PARAMETRES = (
+        ("croissance_proies", "Croissance des proies", 0.0, 3.0, 1.0),
+        ("predation", "Croissance des proies", 0.0, 0.3, 0.1),
+        ("mortalite_predateurs", "γ  Mortalité des prédateurs", 0.0, 3.0, 1.5),
+        ("conversion", "δ  Gain des prédateurs par rencontre", 0.0, 0.3, 0.075),
+    )
+
+    def __init__(self, dt=0.01, **kwargs):
         super().__init__(dt=dt, **kwargs)
-        self.growthPrey = growthPrey
-        self.growthPredator = growthPredator
-        self.chanceInteractionPrey = chanceInteractionPrey
-        self.chanceInteractionPredator = chanceInteractionPredator
 
     def etat_initial(self):
         return np.array([10.0, 5.0])
 
     def derivee(self, t, y):
-        prey, predator = y
+        p = self.params
+        proies, predateurs = y
         return np.array(
             [
-                self.growthPrey * prey - self.chanceInteractionPrey * prey * predator,
-                -self.growthPredator * predator
-                + self.chanceInteractionPredator * prey * predator,
+                p["croissance_proies"] * proies - p["predation"] * proies * predateurs,
+                -p["mortalite_predateurs"] * predateurs
+                + p["conversion"] * proies * predateurs,
             ]
         )

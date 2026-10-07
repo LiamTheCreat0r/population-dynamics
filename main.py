@@ -8,15 +8,17 @@ from interface import Controles
 
 class Application:
 
+    # Les valeurs par défaut sont dans chaque classe (PARAMETRES)
     MODELES = {
-        "Malthus": lambda: Malthus(1.01),
-        "Verhulst": lambda: Verhulst(1.2, 1000),
-        "Volterra": lambda: Volterra(1.0, 1.5, 0.1, 0.075),
+        "Malthus": Malthus,
+        "Verhulst": Verhulst,
+        "Volterra": Volterra,
     }
 
     def __init__(self, depart="Volterra"):
-        self.fig, self.ax = plt.subplots(figsize=(8, 5))
+        self.fig, self.ax = plt.subplots(figsize=(10, 5.5))
         self.nom = depart
+        self.modele = None
         self.en_pause = False
         self.ani = None  # créé après le premier chargement
 
@@ -26,6 +28,7 @@ class Application:
             on_modele=self.charger,
             on_reset=lambda: self.charger(self.nom),
             on_pause=self.basculer_pause,
+            on_parametre=self.changer_parametre,
         )
         self.charger(depart)
 
@@ -33,21 +36,26 @@ class Application:
             self.fig,
             self._maj,
             frames=self._frames,
-            interval=10,
+            interval=16,
             cache_frame_data=False,
         )
 
-    # --- Actions déclenchées par les boutons -----------------------------------
+    # --- Actions déclenchées par les contrôles ---------------------------------
 
     def charger(self, nom):
-        """Crée le modèle `nom` et un graphique vierge (sert aussi de reset)."""
+        """Crée le modèle `nom` avec ses valeurs par défaut (sert aussi de reset)."""
         self.nom = nom
-        modele = self.MODELES[nom]()
-        self.graphique = Graphique(self.fig, self.ax, modele.noms)
-        self.flux = modele.flux()
+        self.modele = self.MODELES[nom]()
+        self.graphique = Graphique(self.fig, self.ax, self.modele.noms)
+        self.flux = self.modele.flux()
         self.graphique.reinitialiser(*next(self.flux))
         self.controles.marquer_actif(nom)
-        self._definir_pause(False)  # un nouveau modèle repart en lecture
+        self.controles.afficher_parametres(self.modele.PARAMETRES, self.modele.params)
+        self._definir_pause(False)
+
+    def changer_parametre(self, cle, valeur):
+        """La simulation continue : le modèle relit ses paramètres à chaque pas."""
+        self.modele.definir(cle, valeur)
 
     def basculer_pause(self):
         self._definir_pause(not self.en_pause)
