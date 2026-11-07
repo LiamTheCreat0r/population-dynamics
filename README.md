@@ -14,5 +14,11 @@ python main.py
 - `modeles.py` : modèles (dérivées, paramètres réglables)
 - `solveurs.py` : Euler et Runge-Kutta 4
 - `affichage.py` : tracé animé
-- `interface.py` : boutons et curseurs
+- `interface.py` : boutons (modèles, pêche, pause, reset) et curseurs
 - `main.py` : application
+
+## Tests
+
+```
+pytest
+```

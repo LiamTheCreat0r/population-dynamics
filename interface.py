@@ -5,19 +5,21 @@ from affichage import COULEURS, COULEUR_GRILLE, COULEUR_AXE
 # Colonne de gauche : x de départ et largeur (en fraction de la figure)
 GAUCHE, LARGEUR = 0.03, 0.27
 HAUT_BOUTON, PAS_BOUTON = 0.055, 0.07
-HAUT_SLIDER, PAS_SLIDER = 0.03, 0.095
+HAUT_SLIDER, PAS_SLIDER = 0.03, 0.08
 
 
 class Controles:
     """Panneau de gauche, en trois sections :
     Modèles (un bouton par modèle), Paramètres (un curseur par paramètre
-    du modèle courant) et Simulation (Pause / Reset).
+    du modèle courant) et Simulation (Pêche / Pause / Reset).
 
     Elle ne fait que déclencher les fonctions reçues (callbacks) et refléter
     l'état qu'on lui indique ; la logique reste dans l'application.
     """
 
-    def __init__(self, fig, noms_modeles, on_modele, on_reset, on_pause, on_parametre):
+    def __init__(
+        self, fig, noms_modeles, on_modele, on_reset, on_pause, on_peche, on_parametre
+    ):
         self.fig = fig
         self.noms_modeles = list(noms_modeles)
         self.on_parametre = on_parametre
@@ -40,7 +42,10 @@ class Controles:
         self._y_premier_slider = self._y_titre_params - 0.10
 
         # --- Section « Simulation » ---
-        self._titre("Simulation", 0.14)
+        self._titre("Simulation", 0.20)
+        self.boutons["Pêche"] = self._bouton(
+            "Pêche", GAUCHE, 0.11, LARGEUR, lambda _e: on_peche()
+        )
         demi = (LARGEUR - 0.02) / 2
         self.boutons["Pause"] = self._bouton(
             "Pause", GAUCHE, 0.04, demi, lambda _e: on_pause()
@@ -81,6 +86,16 @@ class Controles:
     def afficher_pause(self, en_pause):
         """Adapte le libellé du bouton Pause."""
         self.boutons["Pause"].label.set_text("Reprendre" if en_pause else "Pause")
+
+    def afficher_peche(self, possible, active):
+        """Montre le bouton Pêche (si le modèle la gère) et son état."""
+        b = self.boutons["Pêche"]
+        b.ax.set_visible(possible)
+        b.active = possible
+        b.color = COULEURS[1] if active else COULEUR_GRILLE
+        b.ax.set_facecolor(b.color)
+        b.label.set_text("Pêche : active" if active else "Pêche")
+        b.label.set_color("white" if active else COULEURS[0])
 
     def afficher_parametres(self, parametres, valeurs):
         """Remplace les curseurs par ceux du modèle courant.

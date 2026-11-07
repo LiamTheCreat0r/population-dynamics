@@ -27,6 +27,7 @@ class Application:
             on_modele=self.charger,
             on_reset=lambda: self.charger(self.nom),
             on_pause=self.basculer_pause,
+            on_peche=self.basculer_peche,
             on_parametre=self.changer_parametre,
         )
         self.charger(depart)
@@ -49,7 +50,14 @@ class Application:
         self.graphique.reinitialiser(*next(self.flux))
         self.controles.marquer_actif(nom)
         self.controles.afficher_parametres(self.modele.PARAMETRES, self.modele.params)
+        self.controles.afficher_peche(self.modele.PECHE_POSSIBLE, self.modele.peche)
         self._definir_pause(False)
+
+    def basculer_peche(self):
+        """Active ou coupe la pêche ; la simulation continue."""
+        self.modele.peche = not self.modele.peche
+        self.controles.afficher_peche(self.modele.PECHE_POSSIBLE, self.modele.peche)
+        self.fig.canvas.draw_idle()
 
     def changer_parametre(self, cle, valeur):
         """La simulation continue : le modèle relit ses paramètres à chaque pas."""

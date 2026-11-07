@@ -12,12 +12,15 @@ class Modele(ABC):
 
     DT = 0.1  # pas de temps par défaut
 
+    PECHE_POSSIBLE = False  # le modèle accepte-t-il un effort de pêche ?
+
     def __init__(self, solveur=runge_kutta, dt=None, **valeurs):
         self.solveur = solveur
         self.dt = dt or self.DT
         # Valeurs courantes, modifiables à chaud (lues à chaque pas)
         self.params = {cle: defaut for cle, _, _, _, defaut in self.PARAMETRES}
         self.params.update(valeurs)
+        self.peche = False  # pêche active ou non (lue à chaque pas)
 
     def definir(self, cle, valeur):
         """Change un paramètre ; le prochain pas de calcul l'utilise."""
@@ -78,11 +81,14 @@ class Volterra(Modele):
 
     DT = 0.01
 
+    PECHE_POSSIBLE = True
+
     PARAMETRES = (
         ("croissance_proies", "α  Croissance des proies", 0.0, 3.0, 1.0),
         ("predation", "β  Prédation", 0.0, 0.3, 0.1),
         ("mortalite_predateurs", "γ  Mortalité des prédateurs", 0.0, 3.0, 1.5),
         ("conversion", "δ  Gain des prédateurs par rencontre", 0.0, 0.3, 0.075),
+        ("effort_peche", "q  Effort de pêche", 0.0, 1.0, 0.3),
     )
 
     def etat_initial(self):
@@ -91,10 +97,14 @@ class Volterra(Modele):
     def derivee(self, t, y):
         p = self.params
         proies, predateurs = y
+        q = p["effort_peche"] if self.peche else 0.0  # la pêche retire q·N et q·P
         return np.array(
             [
-                p["croissance_proies"] * proies - p["predation"] * proies * predateurs,
+                p["croissance_proies"] * proies
+                - p["predation"] * proies * predateurs
+                - q * proies,
                 -p["mortalite_predateurs"] * predateurs
-                + p["conversion"] * proies * predateurs,
+                + p["conversion"] * proies * predateurs
+                - q * predateurs,
             ]
         )
