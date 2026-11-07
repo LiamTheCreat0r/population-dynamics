@@ -1,6 +1,6 @@
 import numpy as np
 from abc import ABC, abstractmethod
-from solveurs import rungeKutta
+from solveurs import runge_kutta
 
 
 class Modele(ABC):
@@ -10,9 +10,11 @@ class Modele(ABC):
     # Paramètres réglables : (clé, libellé, minimum, maximum, valeur par défaut)
     PARAMETRES = ()
 
-    def __init__(self, solveur=rungeKutta, dt=0.1, **valeurs):
+    DT = 0.1  # pas de temps par défaut
+
+    def __init__(self, solveur=runge_kutta, dt=None, **valeurs):
         self.solveur = solveur
-        self.dt = dt
+        self.dt = dt or self.DT
         # Valeurs courantes, modifiables à chaud (lues à chaque pas)
         self.params = {cle: defaut for cle, _, _, _, defaut in self.PARAMETRES}
         self.params.update(valeurs)
@@ -74,15 +76,14 @@ class Volterra(Modele):
 
     noms = ("Proies", "Prédateurs")
 
+    DT = 0.01
+
     PARAMETRES = (
-        ("croissance_proies", "Croissance des proies", 0.0, 3.0, 1.0),
-        ("predation", "Croissance des proies", 0.0, 0.3, 0.1),
+        ("croissance_proies", "α  Croissance des proies", 0.0, 3.0, 1.0),
+        ("predation", "β  Prédation", 0.0, 0.3, 0.1),
         ("mortalite_predateurs", "γ  Mortalité des prédateurs", 0.0, 3.0, 1.5),
         ("conversion", "δ  Gain des prédateurs par rencontre", 0.0, 0.3, 0.075),
     )
-
-    def __init__(self, dt=0.01, **kwargs):
-        super().__init__(dt=dt, **kwargs)
 
     def etat_initial(self):
         return np.array([10.0, 5.0])

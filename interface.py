@@ -23,7 +23,6 @@ class Controles:
         self.on_parametre = on_parametre
         self.boutons = {}
         self.sliders = []
-        self._axes_sliders = []
 
         # --- Section « Modèles » ---
         self._titre("Modèles", 0.94)
@@ -91,9 +90,8 @@ class Controles:
         """
         for slider in self.sliders:
             slider.disconnect_events()
-        for ax in self._axes_sliders:
-            ax.remove()
-        self.sliders, self._axes_sliders = [], []
+            slider.ax.remove()
+        self.sliders = []
 
         y = self._y_premier_slider
         for cle, libelle, vmin, vmax, _defaut in parametres:
@@ -110,5 +108,4 @@ class Controles:
             )
             slider.on_changed(lambda v, c=cle: self.on_parametre(c, v))
             self.sliders.append(slider)
-            self._axes_sliders.append(ax)
             y -= PAS_SLIDER

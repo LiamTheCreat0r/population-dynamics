@@ -18,7 +18,6 @@ class Application:
     def __init__(self, depart="Volterra"):
         self.fig, self.ax = plt.subplots(figsize=(10, 5.5))
         self.nom = depart
-        self.modele = None
         self.en_pause = False
         self.ani = None  # créé après le premier chargement
 
@@ -35,7 +34,6 @@ class Application:
         self.ani = animation.FuncAnimation(
             self.fig,
             self._maj,
-            frames=self._frames,
             interval=16,
             cache_frame_data=False,
         )
@@ -72,14 +70,10 @@ class Application:
 
     # --- Animation -------------------------------------------------------------
 
-    @staticmethod
-    def _frames():
-        while True:
-            yield None
-
     def _maj(self, _frame):
         return self.graphique.ajouter(*next(self.flux))
 
 
-app = Application()
-plt.show()
+if __name__ == "__main__":
+    Application()
+    plt.show()

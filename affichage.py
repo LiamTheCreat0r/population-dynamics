@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 COULEURS = ["#2B2F42", "#EF233C"]  # une couleur par série
 COULEUR_GRILLE = "#E3E6EC"
 COULEUR_AXE = "#8D99AE"
-COULEUR_TEXTE = COULEURS[0]
 
 TAILLE_POLICE = 12
 plt.rcParams["font.sans-serif"] = ["Arial", "DejaVu Sans"]
@@ -15,23 +14,21 @@ class Graphique:
     """Trace n courbes sur un axe existant, avec axes qui s'étendent seuls."""
 
     def __init__(self, fig, ax, noms):
-        self.fig, self.ax, self.noms = fig, ax, noms
+        self.fig, self.ax = fig, ax
         ax.clear()
         self._style_axes()
 
-        self.lignes = [
-            ax.plot([], [], lw=2.5 if i else 2, color=COULEURS[i % len(COULEURS)])[0]
-            for i in range(len(noms))
-        ]
+        couleurs = [COULEURS[i % len(COULEURS)] for i in range(len(noms))]
+        self.lignes = []
+        for i, couleur in enumerate(couleurs):
+            epaisseur = 2 if i == 0 else 2.5
+            self.lignes.append(ax.plot([], [], lw=epaisseur, color=couleur)[0])
         # Étiquettes directes seulement s'il y a plusieurs courbes
-        self.etiquettes = (
-            [
-                self._etiquette(n, COULEURS[i % len(COULEURS)])
-                for i, n in enumerate(noms)
+        self.etiquettes = []
+        if len(noms) > 1:
+            self.etiquettes = [
+                self._etiquette(n, c) for n, c in zip(noms, couleurs)
             ]
-            if len(noms) > 1
-            else []
-        )
         # La colonne de gauche est réservée aux contrôles
         fig.subplots_adjust(
             left=0.36,
@@ -65,9 +62,6 @@ class Graphique:
             self.ax.set_ylim(ymin, max(etat) * 1.1)
 
         return self._maj_artistes(t, etat)
-
-    def sauvegarder(self, nom_fichier="graphique.png"):
-        self.fig.savefig(nom_fichier, dpi=300, bbox_inches="tight")
 
     # --- Détails internes ------------------------------------------------------
 
