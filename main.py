@@ -3,7 +3,9 @@ import matplotlib.animation as animation
 
 from modeles import Malthus, Verhulst, Volterra
 from affichage import Graphique
-from interface import Controles
+from interface import Controles, VITESSE_DEFAUT
+
+POPULATION_MAX = 1e300
 
 
 class Application:
@@ -19,6 +21,8 @@ class Application:
         self.fig, self.ax = plt.subplots(figsize=(10, 5.5))
         self.nom = depart
         self.en_pause = False
+        self.vitesse = VITESSE_DEFAUT
+        self._pas_en_attente = 0.0  # fraction de pas reportée à l'image suivante
         self.ani = None  # créé après le premier chargement
 
         self.controles = Controles(
@@ -29,6 +33,7 @@ class Application:
             on_pause=self.basculer_pause,
             on_peche=self.basculer_peche,
             on_parametre=self.changer_parametre,
+            on_vitesse=self.changer_vitesse,
         )
         self.charger(depart)
 
@@ -63,13 +68,18 @@ class Application:
         """La simulation continue : le modèle relit ses paramètres à chaque pas."""
         self.modele.definir(cle, valeur)
 
+    def changer_vitesse(self, valeur):
+        self.vitesse = valeur
+
     def basculer_pause(self):
         self._definir_pause(not self.en_pause)
 
     def _definir_pause(self, pause):
+        changement = pause != self.en_pause
         self.en_pause = pause
         self.controles.afficher_pause(pause)
-        if self.ani is not None:
+        # Relancer un timer déjà actif en créerait un second sur macOS
+        if self.ani is not None and changement:
             if pause:
                 self.ani.pause()
             else:
@@ -79,7 +89,18 @@ class Application:
     # --- Animation -------------------------------------------------------------
 
     def _maj(self, _frame):
-        return self.graphique.ajouter(*next(self.flux))
+        """Avance de `vitesse` pas par image, en cumulant les fractions de pas."""
+        self._pas_en_attente += self.vitesse
+        nb_pas = int(self._pas_en_attente)
+        self._pas_en_attente -= nb_pas
+        artistes = ()
+        for _ in range(nb_pas):
+            t, etat = next(self.flux)
+            if max(etat) > POPULATION_MAX:  # au-delà, le graphique ne peut plus suivre
+                self._definir_pause(True)
+                break
+            artistes = self.graphique.ajouter(t, etat)
+        return artistes
 
 
 if __name__ == "__main__":

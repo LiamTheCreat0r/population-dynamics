@@ -1,8 +1,12 @@
+from bisect import bisect_left
+
 import matplotlib.pyplot as plt
 
 COULEURS = ["#2B2F42", "#EF233C"]  # une couleur par série
 COULEUR_GRILLE = "#E3E6EC"
 COULEUR_AXE = "#8D99AE"
+
+FENETRE = 10.0  # durée visible sur le graphique (unités de temps)
 
 TAILLE_POLICE = 12
 plt.rcParams["font.sans-serif"] = ["Arial", "DejaVu Sans"]
@@ -54,9 +58,16 @@ class Graphique:
         for serie, valeur in zip(self.ydata, etat):
             serie.append(valeur)
 
+        # Oublie les points sortis de la fenêtre : le coût d'une image reste constant
+        debut = t - FENETRE
+        expires = bisect_left(self.xdata, debut)
+        del self.xdata[:expires]
+        for serie in self.ydata:
+            del serie[:expires]
+
         xmin, xmax = self.ax.get_xlim()
         if t >= xmax:
-            self.ax.set_xlim(xmin, t)
+            self.ax.set_xlim(max(0.0, debut), t)
         ymin, ymax = self.ax.get_ylim()
         if max(etat) >= ymax:
             self.ax.set_ylim(ymin, max(etat) * 1.1)

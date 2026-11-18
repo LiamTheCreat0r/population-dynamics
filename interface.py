@@ -6,19 +6,28 @@ from affichage import COULEURS, COULEUR_GRILLE, COULEUR_AXE
 GAUCHE, LARGEUR = 0.03, 0.27
 HAUT_BOUTON, PAS_BOUTON = 0.055, 0.07
 HAUT_SLIDER, PAS_SLIDER = 0.03, 0.08
+VITESSE_MIN, VITESSE_MAX, VITESSE_DEFAUT = 0.1, 10.0, 1.0  # pas de calcul par image
 
 
 class Controles:
     """Panneau de gauche, en trois sections :
     Modèles (un bouton par modèle), Paramètres (un curseur par paramètre
-    du modèle courant) et Simulation (Pêche / Pause / Reset).
+    du modèle courant) et Simulation (Pêche / Vitesse / Pause / Reset).
 
     Elle ne fait que déclencher les fonctions reçues (callbacks) et refléter
     l'état qu'on lui indique ; la logique reste dans l'application.
     """
 
     def __init__(
-        self, fig, noms_modeles, on_modele, on_reset, on_pause, on_peche, on_parametre
+        self,
+        fig,
+        noms_modeles,
+        on_modele,
+        on_reset,
+        on_pause,
+        on_peche,
+        on_parametre,
+        on_vitesse,
     ):
         self.fig = fig
         self.noms_modeles = list(noms_modeles)
@@ -43,10 +52,22 @@ class Controles:
 
         # --- Section « Simulation » ---
         self._titre("Simulation", 0.20)
-        self.boutons["Pêche"] = self._bouton(
-            "Pêche", GAUCHE, 0.11, LARGEUR, lambda _e: on_peche()
-        )
         demi = (LARGEUR - 0.02) / 2
+        self.boutons["Pêche"] = self._bouton(
+            "Pêche", GAUCHE, 0.11, demi, lambda _e: on_peche()
+        )
+        ax_vitesse = self.fig.add_axes([GAUCHE + demi + 0.02, 0.115, 0.08, HAUT_SLIDER])
+        ax_vitesse.set_title("Vitesse", loc="left", fontsize=10, color=COULEURS[0])
+        self.slider_vitesse = Slider(
+            ax_vitesse,
+            "",
+            VITESSE_MIN,
+            VITESSE_MAX,
+            valinit=VITESSE_DEFAUT,
+            valfmt="×%.1f",
+            color=COULEURS[1],
+        )
+        self.slider_vitesse.on_changed(on_vitesse)
         self.boutons["Pause"] = self._bouton(
             "Pause", GAUCHE, 0.04, demi, lambda _e: on_pause()
         )
