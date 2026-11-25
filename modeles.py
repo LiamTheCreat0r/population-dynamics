@@ -88,7 +88,7 @@ class Volterra(Modele):
         ("predation", "β  Prédation", 0.0, 0.3, 0.1),
         ("mortalite_predateurs", "γ  Mortalité des prédateurs", 0.0, 3.0, 1.5),
         ("conversion", "δ  Gain des prédateurs par rencontre", 0.0, 0.3, 0.075),
-        ("effort_peche", "q  Effort de pêche", 0.0, 1.0, 0.3),
+        ("effort_peche", "q  Effort de pêche", 0.0, 3.0, 0.3),
     )
 
     def etat_initial(self):

@@ -1,3 +1,4 @@
+from matplotlib.colors import to_rgb
 from matplotlib.widgets import Button, Slider
 
 from affichage import COULEURS, COULEUR_GRILLE, COULEUR_AXE
@@ -7,6 +8,16 @@ GAUCHE, LARGEUR = 0.03, 0.27
 HAUT_BOUTON, PAS_BOUTON = 0.055, 0.07
 HAUT_SLIDER, PAS_SLIDER = 0.03, 0.08
 VITESSE_MIN, VITESSE_MAX, VITESSE_DEFAUT = 0.1, 10.0, 1.0  # pas de calcul par image
+ECLAIRCISSEMENT_SURVOL = 0.2  # part de blanc mélangée à la couleur au survol
+
+
+def colorer(bouton, couleur):
+    """Colore un bouton ; au survol, il devient un peu plus clair."""
+    bouton.color = couleur
+    bouton.hovercolor = tuple(
+        c + (1 - c) * ECLAIRCISSEMENT_SURVOL for c in to_rgb(couleur)
+    )
+    bouton.ax.set_facecolor(couleur)
 
 
 class Controles:
@@ -100,8 +111,7 @@ class Controles:
         for nom in self.noms_modeles:
             actif = nom == nom_actif
             b = self.boutons[nom]
-            b.color = COULEURS[0] if actif else COULEUR_GRILLE
-            b.ax.set_facecolor(b.color)
+            colorer(b, COULEURS[0] if actif else COULEUR_GRILLE)
             b.label.set_color("white" if actif else COULEURS[0])
 
     def afficher_pause(self, en_pause):
@@ -113,8 +123,7 @@ class Controles:
         b = self.boutons["Pêche"]
         b.ax.set_visible(possible)
         b.active = possible
-        b.color = COULEURS[1] if active else COULEUR_GRILLE
-        b.ax.set_facecolor(b.color)
+        colorer(b, COULEURS[1] if active else COULEUR_GRILLE)
         b.label.set_text("Pêche : active" if active else "Pêche")
         b.label.set_color("white" if active else COULEURS[0])
 
