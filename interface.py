@@ -3,10 +3,15 @@ from matplotlib.widgets import Button, Slider
 
 from affichage import COULEURS, COULEUR_GRILLE, COULEUR_AXE
 
+TAILLE_FIGURE = (13, 6.5)  # pouces
+
 # Colonne de gauche : x de départ et largeur (en fraction de la figure)
-GAUCHE, LARGEUR = 0.03, 0.27
-HAUT_BOUTON, PAS_BOUTON = 0.055, 0.07
-HAUT_SLIDER, PAS_SLIDER = 0.03, 0.08
+GAUCHE, LARGEUR = 0.023, 0.21
+ECART = 0.015  # écart horizontal entre deux boutons voisins
+HAUT_BOUTON, PAS_BOUTON = 0.047, 0.06
+HAUT_SLIDER, PAS_SLIDER_MAX = 0.025, 0.07
+LARGEUR_SLIDER = 0.15
+BAS_SLIDERS = 0.25  # les curseurs restent au-dessus de la section Simulation
 VITESSE_MIN, VITESSE_MAX, VITESSE_DEFAUT = 0.1, 10.0, 1.0  # pas de calcul par image
 ECLAIRCISSEMENT_SURVOL = 0.2  # part de blanc mélangée à la couleur au survol
 
@@ -47,30 +52,31 @@ class Controles:
         self.boutons = {}
         self.sliders = []
 
-        # --- Section « Modèles » : boutons empilés vers le bas ---
-        self._titre("Modèles", 0.94)
-        bas = 0.94 - 0.03 - HAUT_BOUTON
-        for nom in self.noms_modeles:
+        demi = (LARGEUR - ECART) / 2
+        x_droite = GAUCHE + demi + ECART
+
+        # --- Section « Modèles » : grille de deux colonnes ---
+        self._titre("Modèles", 0.95)
+        haut = 0.95 - 0.03 - HAUT_BOUTON
+        for i, nom in enumerate(self.noms_modeles):
+            x = GAUCHE if i % 2 == 0 else x_droite
+            bas = haut - (i // 2) * PAS_BOUTON
             self.boutons[nom] = self._bouton(
-                nom, GAUCHE, bas, LARGEUR, lambda _e, n=nom: on_modele(n)
+                nom, x, bas, demi, lambda _e, n=nom: on_modele(n)
             )
-            bas -= PAS_BOUTON
-        bas += PAS_BOUTON  # position du dernier bouton
 
         # --- Section « Paramètres » (les curseurs sont créés à la demande) ---
-        y_titre = bas - 0.06
+        y_titre = bas - 0.05
         self._titre("Paramètres", y_titre)
-        self._y_premier_slider = y_titre - 0.10
+        self._y_premier_slider = y_titre - 0.085
 
         # --- Section « Simulation » : grille 2 × 2 ---
         self._titre("Simulation", 0.20)
-        demi = (LARGEUR - 0.02) / 2
-        x_droite = GAUCHE + demi + 0.02
         self.boutons["Pêche"] = self._bouton(
             "Pêche", GAUCHE, 0.11, demi, lambda _e: on_peche()
         )
         self.slider_vitesse = self._slider(
-            x_droite, 0.115, 0.08, "Vitesse",
+            x_droite, 0.115, 0.06, "Vitesse",
             VITESSE_MIN, VITESSE_MAX, VITESSE_DEFAUT, "×%.1f", on_vitesse,
         )
         self.boutons["Pause"] = self._bouton(
@@ -95,6 +101,7 @@ class Controles:
 
     def _bouton(self, texte, x, y, largeur, action):
         bouton = Button(self.fig.add_axes([x, y, largeur, HAUT_BOUTON]), texte)
+        bouton.label.set_fontsize(11)
         bouton.on_clicked(action)
         return bouton  # la référence doit être gardée, sinon il est ramassé
 
@@ -139,11 +146,14 @@ class Controles:
 
         self.sliders = []
         y = self._y_premier_slider
+        # Espacement resserré si les curseurs ne tiennent pas tous
+        place = self._y_premier_slider - BAS_SLIDERS
+        pas = min(PAS_SLIDER_MAX, place / max(1, len(parametres) - 1))
         for cle, libelle, vmin, vmax, _defaut in parametres:
             self.sliders.append(
                 self._slider(
-                    GAUCHE, y, 0.19, libelle, vmin, vmax, valeurs[cle], "%.3g",
-                    lambda v, c=cle: self.on_parametre(c, v),
+                    GAUCHE, y, LARGEUR_SLIDER, libelle, vmin, vmax, valeurs[cle],
+                    "%.3g", lambda v, c=cle: self.on_parametre(c, v),
                 )
             )
-            y -= PAS_SLIDER
+            y -= pas
