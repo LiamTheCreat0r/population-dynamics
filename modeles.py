@@ -4,6 +4,11 @@ from solveurs import runge_kutta
 
 
 class Modele(ABC):
+    """Modèle de population y' = f(t, y), simulé pas à pas.
+
+    Les paramètres sont relus à chaque pas : on peut les modifier
+    (dans `params`) pendant la simulation.
+    """
 
     noms = ("Population",)  # un nom par composante de l'état
 
@@ -17,14 +22,9 @@ class Modele(ABC):
     def __init__(self, solveur=runge_kutta, dt=None, **valeurs):
         self.solveur = solveur
         self.dt = dt or self.DT
-        # Valeurs courantes, modifiables à chaud (lues à chaque pas)
         self.params = {cle: defaut for cle, _, _, _, defaut in self.PARAMETRES}
         self.params.update(valeurs)
-        self.peche = False  # pêche active ou non (lue à chaque pas)
-
-    def definir(self, cle, valeur):
-        """Change un paramètre ; le prochain pas de calcul l'utilise."""
-        self.params[cle] = valeur
+        self.peche = False  # pêche active ou non
 
     @abstractmethod
     def etat_initial(self):
@@ -35,7 +35,11 @@ class Modele(ABC):
         """Second membre de y' = f(t, y)."""
 
     def pas(self, etat):
-        """Un pas du solveur : renvoie l'état à t + dt."""
+        """Renvoie l'état à t + dt.
+
+        Le solveur est appelé sur un seul pas (durée = pas = dt) ;
+        on garde le dernier point calculé.
+        """
         _, y = self.solveur(self.derivee, etat, self.dt, self.dt)
         return y[-1]
 
@@ -50,6 +54,7 @@ class Modele(ABC):
 
 
 class Malthus(Modele):
+    """Croissance exponentielle : N' = r·N."""
 
     PARAMETRES = (("croissance", "Croissance", 0.0, 3.0, 1.01),)
 
@@ -61,6 +66,7 @@ class Malthus(Modele):
 
 
 class Verhulst(Modele):
+    """Croissance logistique : N' = r·N·(1 − N/K), K = capacité du milieu."""
 
     PARAMETRES = (
         ("croissance", "Croissance", 0.0, 3.0, 1.2),
@@ -76,6 +82,13 @@ class Verhulst(Modele):
 
 
 class Volterra(Modele):
+    """Proies N et prédateurs P (Lotka-Volterra), avec pêche optionnelle :
+
+        N' =  α·N − β·N·P − q·N
+        P' = −γ·P + δ·N·P − q·P
+
+    q est l'effort de pêche (0 quand la pêche est coupée).
+    """
 
     noms = ("Proies", "Prédateurs")
 
@@ -97,14 +110,13 @@ class Volterra(Modele):
     def derivee(self, t, y):
         p = self.params
         proies, predateurs = y
-        q = p["effort_peche"] if self.peche else 0.0  # la pêche retire q·N et q·P
+        q = p["effort_peche"] if self.peche else 0.0
+        rencontres = proies * predateurs
         return np.array(
             [
-                p["croissance_proies"] * proies
-                - p["predation"] * proies * predateurs
-                - q * proies,
+                p["croissance_proies"] * proies - p["predation"] * rencontres - q * proies,
                 -p["mortalite_predateurs"] * predateurs
-                + p["conversion"] * proies * predateurs
+                + p["conversion"] * rencontres
                 - q * predateurs,
             ]
         )

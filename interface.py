@@ -11,13 +11,14 @@ VITESSE_MIN, VITESSE_MAX, VITESSE_DEFAUT = 0.1, 10.0, 1.0  # pas de calcul par i
 ECLAIRCISSEMENT_SURVOL = 0.2  # part de blanc mélangée à la couleur au survol
 
 
-def colorer(bouton, couleur):
-    """Colore un bouton ; au survol, il devient un peu plus clair."""
-    bouton.color = couleur
-    bouton.hovercolor = tuple(
-        c + (1 - c) * ECLAIRCISSEMENT_SURVOL for c in to_rgb(couleur)
-    )
-    bouton.ax.set_facecolor(couleur)
+def styler(bouton, actif, couleur_active):
+    """Bouton actif : fond `couleur_active` et texte blanc ; sinon fond gris clair.
+    Au survol, le fond devient un peu plus clair."""
+    fond = couleur_active if actif else COULEUR_GRILLE
+    bouton.color = fond
+    bouton.hovercolor = tuple(c + (1 - c) * ECLAIRCISSEMENT_SURVOL for c in to_rgb(fond))
+    bouton.ax.set_facecolor(fond)
+    bouton.label.set_color("white" if actif else COULEURS[0])
 
 
 class Controles:
@@ -46,7 +47,7 @@ class Controles:
         self.boutons = {}
         self.sliders = []
 
-        # --- Section « Modèles » ---
+        # --- Section « Modèles » : boutons empilés vers le bas ---
         self._titre("Modèles", 0.94)
         bas = 0.94 - 0.03 - HAUT_BOUTON
         for nom in self.noms_modeles:
@@ -57,33 +58,26 @@ class Controles:
         bas += PAS_BOUTON  # position du dernier bouton
 
         # --- Section « Paramètres » (les curseurs sont créés à la demande) ---
-        self._y_titre_params = bas - 0.06
-        self._titre("Paramètres", self._y_titre_params)
-        self._y_premier_slider = self._y_titre_params - 0.10
+        y_titre = bas - 0.06
+        self._titre("Paramètres", y_titre)
+        self._y_premier_slider = y_titre - 0.10
 
-        # --- Section « Simulation » ---
+        # --- Section « Simulation » : grille 2 × 2 ---
         self._titre("Simulation", 0.20)
         demi = (LARGEUR - 0.02) / 2
+        x_droite = GAUCHE + demi + 0.02
         self.boutons["Pêche"] = self._bouton(
             "Pêche", GAUCHE, 0.11, demi, lambda _e: on_peche()
         )
-        ax_vitesse = self.fig.add_axes([GAUCHE + demi + 0.02, 0.115, 0.08, HAUT_SLIDER])
-        ax_vitesse.set_title("Vitesse", loc="left", fontsize=10, color=COULEURS[0])
-        self.slider_vitesse = Slider(
-            ax_vitesse,
-            "",
-            VITESSE_MIN,
-            VITESSE_MAX,
-            valinit=VITESSE_DEFAUT,
-            valfmt="×%.1f",
-            color=COULEURS[1],
+        self.slider_vitesse = self._slider(
+            x_droite, 0.115, 0.08, "Vitesse",
+            VITESSE_MIN, VITESSE_MAX, VITESSE_DEFAUT, "×%.1f", on_vitesse,
         )
-        self.slider_vitesse.on_changed(on_vitesse)
         self.boutons["Pause"] = self._bouton(
             "Pause", GAUCHE, 0.04, demi, lambda _e: on_pause()
         )
         self.boutons["Reset"] = self._bouton(
-            "Reset", GAUCHE + demi + 0.02, 0.04, demi, lambda _e: on_reset()
+            "Reset", x_droite, 0.04, demi, lambda _e: on_reset()
         )
 
     # --- Construction ----------------------------------------------------------
@@ -104,15 +98,22 @@ class Controles:
         bouton.on_clicked(action)
         return bouton  # la référence doit être gardée, sinon il est ramassé
 
+    def _slider(self, x, y, largeur, libelle, vmin, vmax, valinit, valfmt, action):
+        """Curseur avec son libellé au-dessus ; `action(valeur)` à chaque changement."""
+        ax = self.fig.add_axes([x, y, largeur, HAUT_SLIDER])
+        ax.set_title(libelle, loc="left", fontsize=10, color=COULEURS[0])
+        slider = Slider(
+            ax, "", vmin, vmax, valinit=valinit, valfmt=valfmt, color=COULEURS[1]
+        )
+        slider.on_changed(action)
+        return slider  # même remarque que pour les boutons
+
     # --- Mise à jour depuis l'application -------------------------------------
 
     def marquer_actif(self, nom_actif):
         """Met en évidence le bouton du modèle en cours."""
         for nom in self.noms_modeles:
-            actif = nom == nom_actif
-            b = self.boutons[nom]
-            colorer(b, COULEURS[0] if actif else COULEUR_GRILLE)
-            b.label.set_color("white" if actif else COULEURS[0])
+            styler(self.boutons[nom], nom == nom_actif, COULEURS[0])
 
     def afficher_pause(self, en_pause):
         """Adapte le libellé du bouton Pause."""
@@ -122,10 +123,9 @@ class Controles:
         """Montre le bouton Pêche (si le modèle la gère) et son état."""
         b = self.boutons["Pêche"]
         b.ax.set_visible(possible)
-        b.active = possible
-        colorer(b, COULEURS[1] if active else COULEUR_GRILLE)
+        b.active = possible  # un bouton caché ne doit pas réagir aux clics
+        styler(b, active, COULEURS[1])
         b.label.set_text("Pêche : active" if active else "Pêche")
-        b.label.set_color("white" if active else COULEURS[0])
 
     def afficher_parametres(self, parametres, valeurs):
         """Remplace les curseurs par ceux du modèle courant.
@@ -136,21 +136,14 @@ class Controles:
         for slider in self.sliders:
             slider.disconnect_events()
             slider.ax.remove()
-        self.sliders = []
 
+        self.sliders = []
         y = self._y_premier_slider
         for cle, libelle, vmin, vmax, _defaut in parametres:
-            ax = self.fig.add_axes([GAUCHE, y, 0.19, HAUT_SLIDER])
-            ax.set_title(libelle, loc="left", fontsize=10, color=COULEURS[0])
-            slider = Slider(
-                ax,
-                "",
-                vmin,
-                vmax,
-                valinit=valeurs[cle],
-                valfmt="%.3g",
-                color=COULEURS[1],
+            self.sliders.append(
+                self._slider(
+                    GAUCHE, y, 0.19, libelle, vmin, vmax, valeurs[cle], "%.3g",
+                    lambda v, c=cle: self.on_parametre(c, v),
+                )
             )
-            slider.on_changed(lambda v, c=cle: self.on_parametre(c, v))
-            self.sliders.append(slider)
             y -= PAS_SLIDER

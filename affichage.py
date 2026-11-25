@@ -15,25 +15,29 @@ plt.rcParams["font.size"] = TAILLE_POLICE
 
 
 class Graphique:
-    """Trace n courbes sur un axe existant, avec axes qui s'étendent seuls."""
+    """Trace une courbe par composante de l'état, à partir du point (t0, etat0).
 
-    def __init__(self, fig, ax, noms):
-        self.fig, self.ax = fig, ax
+    L'axe des temps glisse pour montrer les FENETRE dernières unités ;
+    l'axe des populations ne fait que s'agrandir.
+    """
+
+    def __init__(self, fig, ax, noms, t0, etat0):
+        self.ax = ax
         ax.clear()
         self._style_axes()
 
-        couleurs = [COULEURS[i % len(COULEURS)] for i in range(len(noms))]
         self.lignes = []
-        for i, couleur in enumerate(couleurs):
+        self.etiquettes = []
+        for i, nom in enumerate(noms):
+            couleur = COULEURS[i % len(COULEURS)]
             epaisseur = 2 if i == 0 else 2.5
             self.lignes.append(ax.plot([], [], lw=epaisseur, color=couleur)[0])
-        # Étiquettes directes seulement s'il y a plusieurs courbes
-        self.etiquettes = []
-        if len(noms) > 1:
-            self.etiquettes = [
-                self._etiquette(n, c) for n, c in zip(noms, couleurs)
-            ]
-        # La colonne de gauche est réservée aux contrôles
+            # Étiquette au bout de la courbe, seulement s'il y en a plusieurs
+            if len(noms) > 1:
+                self.etiquettes.append(self._etiquette(nom, couleur))
+
+        # La colonne de gauche est réservée aux contrôles ; à droite, la place
+        # pour les étiquettes
         fig.subplots_adjust(
             left=0.36,
             bottom=0.12,
@@ -41,19 +45,14 @@ class Graphique:
             right=0.85 if self.etiquettes else 0.95,
         )
 
-        self.xdata, self.ydata = [], [[] for _ in noms]
-
-    # --- Interface utilisée par l'application ----------------------------------
-
-    def reinitialiser(self, t, etat):
-        self.xdata[:] = [t]
-        for serie, valeur in zip(self.ydata, etat):
-            serie[:] = [valeur]
-        self.ax.set_xlim(0, 1)
-        self.ax.set_ylim(0, max(etat) * 2)
-        self._maj_artistes(t, etat)
+        self.xdata = [t0]
+        self.ydata = [[valeur] for valeur in etat0]
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, max(etat0) * 2)
+        self._maj_artistes(t0, etat0)
 
     def ajouter(self, t, etat):
+        """Ajoute un point et renvoie les artistes à redessiner."""
         self.xdata.append(t)
         for serie, valeur in zip(self.ydata, etat):
             serie.append(valeur)
@@ -65,9 +64,10 @@ class Graphique:
         for serie in self.ydata:
             del serie[:expires]
 
-        xmin, xmax = self.ax.get_xlim()
-        if t >= xmax:
+        # x : on suit le temps une fois le bord droit atteint
+        if t >= self.ax.get_xlim()[1]:
             self.ax.set_xlim(max(0.0, debut), t)
+        # y : on agrandit (avec 10 % de marge) dès qu'une courbe dépasse
         ymin, ymax = self.ax.get_ylim()
         if max(etat) >= ymax:
             self.ax.set_ylim(ymin, max(etat) * 1.1)
@@ -80,7 +80,7 @@ class Graphique:
         for ligne, serie in zip(self.lignes, self.ydata):
             ligne.set_data(self.xdata, serie)
         for etiquette, valeur in zip(self.etiquettes, etat):
-            etiquette.xy = (t, valeur)
+            etiquette.xy = (t, valeur)  # l'étiquette suit le dernier point
         return (*self.lignes, *self.etiquettes)
 
     def _etiquette(self, texte, couleur):
@@ -93,7 +93,7 @@ class Graphique:
             fontweight="bold",
             ha="left",
             va="center",
-            annotation_clip=False,
+            annotation_clip=False,  # reste visible hors de la zone du graphique
         )
 
     def _style_axes(self):

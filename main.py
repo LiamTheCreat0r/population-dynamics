@@ -50,9 +50,8 @@ class Application:
         """Crée le modèle `nom` avec ses valeurs par défaut (sert aussi de reset)."""
         self.nom = nom
         self.modele = self.MODELES[nom]()
-        self.graphique = Graphique(self.fig, self.ax, self.modele.noms)
         self.flux = self.modele.flux()
-        self.graphique.reinitialiser(*next(self.flux))
+        self.graphique = Graphique(self.fig, self.ax, self.modele.noms, *next(self.flux))
         self.controles.marquer_actif(nom)
         self.controles.afficher_parametres(self.modele.PARAMETRES, self.modele.params)
         self.controles.afficher_peche(self.modele.PECHE_POSSIBLE, self.modele.peche)
@@ -66,7 +65,7 @@ class Application:
 
     def changer_parametre(self, cle, valeur):
         """La simulation continue : le modèle relit ses paramètres à chaque pas."""
-        self.modele.definir(cle, valeur)
+        self.modele.params[cle] = valeur
 
     def changer_vitesse(self, valeur):
         self.vitesse = valeur
@@ -89,7 +88,10 @@ class Application:
     # --- Animation -------------------------------------------------------------
 
     def _maj(self, _frame):
-        """Avance de `vitesse` pas par image, en cumulant les fractions de pas."""
+        """Avance de `vitesse` pas par image, en cumulant les fractions de pas.
+
+        Ex. : vitesse 0.25 → un pas toutes les 4 images ; vitesse 2.5 → 2 ou 3 pas.
+        """
         self._pas_en_attente += self.vitesse
         nb_pas = int(self._pas_en_attente)
         self._pas_en_attente -= nb_pas
